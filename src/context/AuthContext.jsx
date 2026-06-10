@@ -28,15 +28,25 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const { data } = await api.post('/login', { email, password });
-    localStorage.setItem('token', data.access_token || data.token);
-    setToken(data.access_token || data.token);
+    const authData = Array.isArray(data.data) ? data.data[0] : data.data;
+    const accessToken = authData?.access_token || data.access_token || data.token;
+
+    if (!accessToken) {
+      throw new Error('The server did not return an access token.');
+    }
+
+    localStorage.setItem('token', accessToken);
+    setToken(accessToken);
     return data;
   };
 
-  const register = async (username, email, password) => {
-    const { data } = await api.post('/register', { username, email, password });
-    localStorage.setItem('token', data.access_token || data.token);
-    setToken(data.access_token || data.token);
+  const register = async (name, email, password) => {
+    const { data } = await api.post('/register', {
+      name,
+      email,
+      password,
+      role: 'user',
+    });
     return data;
   };
 

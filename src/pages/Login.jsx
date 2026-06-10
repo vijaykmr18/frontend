@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { getApiErrorMessage } from '../api/errors';
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
@@ -7,6 +8,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -16,7 +18,7 @@ const Login = () => {
       await login(email, password);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Login failed');
+      setError(getApiErrorMessage(err, 'Login failed'));
     }
   };
 
@@ -24,6 +26,9 @@ const Login = () => {
     <div className="row justify-content-center">
       <div className="col-md-6">
         <h2 className="mb-3">Login</h2>
+        {location.state?.message && (
+          <div className="alert alert-success">{location.state.message}</div>
+        )}
         {error && <div className="alert alert-danger">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
