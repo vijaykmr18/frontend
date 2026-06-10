@@ -44,7 +44,13 @@ const Products = () => {
 
   return (
     <div>
-      <h2 className="mb-4">Products</h2>
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">Product catalog</span>
+          <h1>Discover products</h1>
+          <p>Explore live inventory and add available items to your cart.</p>
+        </div>
+      </div>
       <Alert message={message} type="success" />
       <Alert message={error} type="danger" />
       {loading && <LoadingState label="Loading products..." />}
@@ -54,10 +60,13 @@ const Products = () => {
           <div key={p.name} className="col-md-6 col-lg-4 mb-4">
             <div className="card product-card h-100">
               <div className="card-body">
+                <span className="product-kicker">In catalog</span>
                 <h5 className="card-title">{p.name}</h5>
                 <p className="card-text">{p.description}</p>
-                <p className="card-text"><strong>₹{p.price}</strong></p>
-                <p className="text-muted small">{p.stock} in stock</p>
+                <div className="product-meta">
+                  <strong>₹{p.price}</strong>
+                  <span>{p.stock} in stock</span>
+                </div>
                 <button
                   className="btn btn-primary"
                   onClick={() => addToCart(p.name)}

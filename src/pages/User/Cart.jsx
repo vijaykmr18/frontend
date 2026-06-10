@@ -74,7 +74,16 @@ const Cart = () => {
 
   return (
     <div>
-      <h2 className="mb-4">Your Cart</h2>
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">Purchase workspace</span>
+          <h1>Your cart</h1>
+          <p>Review quantities, availability, and order value before checkout.</p>
+        </div>
+        <button className="btn btn-ghost" onClick={() => navigate('/products')}>
+          Continue shopping
+        </button>
+      </div>
       <Alert message={message} type="success" />
       <Alert message={error} type="danger" />
       {loading && <LoadingState label="Loading cart..." />}
@@ -82,9 +91,9 @@ const Cart = () => {
         <EmptyState message="Your cart is empty. Add a product to get started." />
       )}
       {!loading && cartItems.length > 0 && (
-        <>
+        <section className="surface-card">
           <div className="table-responsive">
-            <table className="table align-middle">
+            <table className="table enterprise-table align-middle">
               <thead>
                 <tr>
                   <th>Product</th>
@@ -134,12 +143,15 @@ const Cart = () => {
             </table>
           </div>
           <div className="cart-summary">
-            <strong>Total: ₹{total}</strong>
+            <div>
+              <span className="record-label">Order total</span>
+              <strong className="cart-total">₹{total}</strong>
+            </div>
             <button className="btn btn-primary" onClick={() => navigate('/orders')}>
               Continue to Order
             </button>
           </div>
-        </>
+        </section>
       )}
     </div>
   );

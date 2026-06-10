@@ -1,31 +1,42 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api';
+import { getSessionFromToken } from '../utils/auth';
 
 const AuthContext = createContext(null);
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(localStorage.getItem('token'));
-  const [user, setUser] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const initialSession = getSessionFromToken(localStorage.getItem('token'));
+  const [token, setToken] = useState(initialSession?.token || null);
+  const [user, setUser] = useState(initialSession?.user || null);
+  const [isAdmin, setIsAdmin] = useState(initialSession?.isAdmin || false);
+  const [authReady, setAuthReady] = useState(true);
 
   useEffect(() => {
-    if (token) {
-      // Decode JWT to extract role (if present)
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        setUser(payload);
-        setIsAdmin(payload.role === 'admin' || Boolean(payload.isAdmin));
-      } catch (e) {
-        console.error('Invalid token');
-        logout();
-      }
-    } else {
+    const session = getSessionFromToken(token);
+    if (!session) {
+      localStorage.removeItem('token');
+      setToken(null);
       setUser(null);
       setIsAdmin(false);
+    } else {
+      setUser(session.user);
+      setIsAdmin(session.isAdmin);
     }
+    setAuthReady(true);
   }, [token]);
+
+  useEffect(() => {
+    const clearExpiredSession = () => {
+      setToken(null);
+      setUser(null);
+      setIsAdmin(false);
+    };
+
+    window.addEventListener('auth:expired', clearExpiredSession);
+    return () => window.removeEventListener('auth:expired', clearExpiredSession);
+  }, []);
 
   const login = async (email, password) => {
     const { data } = await api.post('/login', { email, password });
@@ -38,6 +49,9 @@ export const AuthProvider = ({ children }) => {
 
     localStorage.setItem('token', accessToken);
     setToken(accessToken);
+    const session = getSessionFromToken(accessToken);
+    setUser(session?.user || null);
+    setIsAdmin(session?.isAdmin || false);
     return data;
   };
 
@@ -59,7 +73,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, isAdmin, login, register, logout }}>
+    <AuthContext.Provider value={{ token, user, isAdmin, authReady, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

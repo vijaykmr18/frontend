@@ -10,6 +10,7 @@ const Orders = () => {
   const [returnReasons, setReturnReasons] = useState({});
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [returnReceipt, setReturnReceipt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
 
@@ -79,7 +80,10 @@ const Orders = () => {
         null,
         { params: { reason } }
       );
+      const receipt = getResponseData(response)[0];
+      setReturnReceipt(receipt || null);
       setMessage(getResponseMessage(response, 'Return requested'));
+      setReturnReasons(current => ({ ...current, [orderId]: '' }));
     } catch (err) {
       setError(getApiErrorMessage(err, 'Return request failed'));
     } finally {
@@ -92,6 +96,21 @@ const Orders = () => {
       <h2 className="mb-4">Orders</h2>
       <Alert message={message} type="success" />
       <Alert message={error} type="danger" />
+      {returnReceipt && (
+        <div className="receipt-card">
+          <div>
+            <span className="eyebrow">Return created</span>
+            <h4>{returnReceipt.return_id}</h4>
+            <p>Keep this Return ID for tracking and support.</p>
+          </div>
+          <button
+            className="btn btn-outline-primary btn-sm"
+            onClick={() => navigator.clipboard?.writeText(returnReceipt.return_id)}
+          >
+            Copy Return ID
+          </button>
+        </div>
+      )}
 
       <form className="form-panel mb-4" onSubmit={placeOrder}>
         <h4>Place Order</h4>
@@ -116,7 +135,17 @@ const Orders = () => {
           <article className="order-card" key={order.order_id}>
             <div className="order-card-header">
               <div>
-                <strong>Order {order.order_id}</strong>
+                <span className="record-label">Order ID</span>
+                <div className="record-id-row">
+                  <strong>{order.order_id}</strong>
+                  <button
+                    className="copy-button"
+                    onClick={() => navigator.clipboard?.writeText(order.order_id)}
+                    aria-label="Copy order ID"
+                  >
+                    Copy
+                  </button>
+                </div>
                 <div className="text-muted small">{order.location}</div>
               </div>
               <span className="badge text-bg-secondary">{order.status}</span>
@@ -144,7 +173,7 @@ const Orders = () => {
                 <div className="return-form">
                   <input
                     className="form-control form-control-sm"
-                    placeholder="Reason for return"
+                    placeholder="Return reason"
                     value={returnReasons[order.order_id] || ''}
                     onChange={event =>
                       setReturnReasons(current => ({
@@ -158,7 +187,7 @@ const Orders = () => {
                     disabled={busy === `return-${order.order_id}`}
                     onClick={() => requestReturn(order.order_id)}
                   >
-                    Request Return
+                    Create Return
                   </button>
                 </div>
               )}
