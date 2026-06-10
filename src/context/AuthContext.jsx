@@ -16,13 +16,14 @@ export const AuthProvider = ({ children }) => {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUser(payload);
-        if (payload.role === 'admin' || payload.isAdmin) {
-          setIsAdmin(true);
-        }
+        setIsAdmin(payload.role === 'admin' || Boolean(payload.isAdmin));
       } catch (e) {
         console.error('Invalid token');
         logout();
       }
+    } else {
+      setUser(null);
+      setIsAdmin(false);
     }
   }, [token]);
 

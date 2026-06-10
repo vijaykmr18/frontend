@@ -1,4 +1,135 @@
 body {
   margin: 0;
   font-family: system-ui, -apple-system, sans-serif;
+  background: #f6f7fb;
+  color: #1f2937;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease, transform 150ms ease;
+}
+
+button:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+.page-container {
+  padding-top: 2rem;
+  padding-bottom: 3rem;
+  min-height: calc(100vh - 56px);
+}
+
+.form-panel,
+.order-card,
+.empty-state {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.9rem;
+  box-shadow: 0 8px 24px rgb(15 23 42 / 6%);
+}
+
+.form-panel {
+  max-width: 720px;
+  padding: 1.5rem;
+}
+
+.product-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.9rem;
+  box-shadow: 0 6px 20px rgb(15 23 42 / 6%);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.product-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgb(15 23 42 / 10%);
+}
+
+.page-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 180px;
+  color: #6b7280;
+}
+
+.empty-state {
+  padding: 2rem;
+  text-align: center;
+  color: #6b7280;
+}
+
+.stack-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.order-card {
+  padding: 1.25rem;
+}
+
+.order-card-header,
+.order-footer,
+.cart-summary,
+.order-item,
+.action-row,
+.return-form,
+.quantity-control {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.order-card-header,
+.order-footer,
+.cart-summary,
+.order-item {
+  justify-content: space-between;
+}
+
+.order-item {
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.order-footer,
+.cart-summary {
+  margin-top: 1rem;
+}
+
+.return-form {
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.return-form .form-control {
+  max-width: 280px;
+}
+
+.quantity-control span {
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  .page-container {
+    padding-top: 1.25rem;
+  }
+
+  .order-card-header,
+  .order-footer,
+  .cart-summary,
+  .return-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .return-form .form-control {
+    max-width: none;
+  }
 }

@@ -1,16 +1,24 @@
 import { useEffect, useState } from 'react';
 import api from '../../api';
+import { getApiErrorMessage } from '../../api/errors';
+import { getResponseData, getResponseMessage } from '../../api/response';
+import { Alert, EmptyState, LoadingState } from '../../components/PageState';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState('');
 
   const fetchProducts = async () => {
     try {
-      const { data } = await api.get('/user/products');
-      setProducts(data);
+      const response = await api.get('/user/products');
+      setProducts(getResponseData(response));
     } catch (err) {
-      console.error(err);
+      setError(getApiErrorMessage(err, 'Unable to load products'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -19,28 +27,44 @@ const Products = () => {
   }, []);
 
   const addToCart = async (productName) => {
+    setAdding(productName);
+    setError('');
     try {
-      await api.post('/user/add_cart/add', { product_name: productName });
-      setMessage(`Added ${productName} to cart!`);
+      const response = await api.post('/user/add_cart/add', null, {
+        params: { product_name: productName, quantity: 1 },
+      });
+      setMessage(getResponseMessage(response, `Added ${productName} to cart`));
       setTimeout(() => setMessage(''), 2000);
     } catch (err) {
-      setMessage('Failed to add to cart');
+      setError(getApiErrorMessage(err, 'Failed to add to cart'));
+    } finally {
+      setAdding('');
     }
   };
 
   return (
     <div>
-      <h2>Products</h2>
-      {message && <div className="alert alert-info">{message}</div>}
+      <h2 className="mb-4">Products</h2>
+      <Alert message={message} type="success" />
+      <Alert message={error} type="danger" />
+      {loading && <LoadingState label="Loading products..." />}
+      {!loading && products.length === 0 && <EmptyState message="No products are available." />}
       <div className="row">
-        {products.map((p, idx) => (
-          <div key={idx} className="col-md-4 mb-3">
-            <div className="card">
+        {products.map((p) => (
+          <div key={p.name} className="col-md-6 col-lg-4 mb-4">
+            <div className="card product-card h-100">
               <div className="card-body">
                 <h5 className="card-title">{p.name}</h5>
                 <p className="card-text">{p.description}</p>
-                <p className="card-text"><strong>${p.price}</strong></p>
-                <button className="btn btn-primary" onClick={() => addToCart(p.name)}>Add to Cart</button>
+                <p className="card-text"><strong>₹{p.price}</strong></p>
+                <p className="text-muted small">{p.stock} in stock</p>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => addToCart(p.name)}
+                  disabled={adding === p.name || p.stock < 1}
+                >
+                  {adding === p.name ? 'Adding...' : p.stock < 1 ? 'Out of stock' : 'Add to Cart'}
+                </button>
               </div>
             </div>
           </div>

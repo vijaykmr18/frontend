@@ -1,4 +1,8 @@
 export const getApiErrorMessage = (error, fallback) => {
+  if (!error.response) {
+    return 'Unable to reach the server. Please try again in a moment.';
+  }
+
   const detail = error.response?.data?.detail;
 
   if (Array.isArray(detail)) {

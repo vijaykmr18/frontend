@@ -1,74 +1,146 @@
-import { useEffect, useState } from 'react';
-import api from '../../api';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../../api';
+import { getApiErrorMessage } from '../../api/errors';
+import { getResponseData, getResponseMessage } from '../../api/response';
+import { Alert, EmptyState, LoadingState } from '../../components/PageState';
 
 const Cart = () => {
   const [cartItems, setCartItems] = useState([]);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [busyItem, setBusyItem] = useState('');
   const navigate = useNavigate();
 
-  const fetchCart = async () => {
+  const fetchCart = useCallback(async () => {
     try {
-      const { data } = await api.get('/user/products'); // Might need a dedicated cart endpoint; fallback to products
-      // Assuming cart is stored in user session; for demo we will store locally
-      // Since no explicit GET cart endpoint, we'll simulate with a local state.
-      // However, to stay true to your API, we can show add/update/delete only.
-      // We'll just list items from local state (you may need to create a /user/cart endpoint).
-      // For full compliance, we'll skip listing and only allow actions via input.
-      setCartItems([]); // placeholder
+      const response = await api.get('/user/add_cart/view');
+      setCartItems(getResponseData(response));
     } catch (err) {
-      console.error(err);
+      setError(getApiErrorMessage(err, 'Unable to load cart'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCart();
+  }, [fetchCart]);
+
+  const updateQuantity = async (productName, quantity) => {
+    if (quantity < 1) return;
+    setBusyItem(productName);
+    setError('');
+    try {
+      const response = await api.put(
+        `/user/update_cart/cart/${encodeURIComponent(productName)}`,
+        null,
+        { params: { quantity } }
+      );
+      setCartItems(items =>
+        items.map(item =>
+          item.product_name === productName ? { ...item, quantity } : item
+        )
+      );
+      setMessage(getResponseMessage(response, 'Cart updated'));
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Unable to update cart'));
+    } finally {
+      setBusyItem('');
     }
   };
 
-  // Because the API endpoints only update/delete by product_name, we'll provide a manual form
-  const [productName, setProductName] = useState('');
-  const [quantity, setQuantity] = useState(1);
-
-  const addItem = async () => {
+  const deleteItem = async (productName) => {
+    setBusyItem(productName);
+    setError('');
     try {
-      await api.post('/user/add_cart/add', { product_name: productName });
-      setMessage(`Added ${productName}`);
+      const response = await api.delete(
+        `/user/delete_cart/cart/${encodeURIComponent(productName)}`
+      );
+      setCartItems(items => items.filter(item => item.product_name !== productName));
+      setMessage(getResponseMessage(response, 'Item removed'));
     } catch (err) {
-      setMessage('Error adding item');
+      setError(getApiErrorMessage(err, 'Unable to remove item'));
+    } finally {
+      setBusyItem('');
     }
   };
 
-  const updateItem = async () => {
-    try {
-      await api.put(`/user/update_cart/cart/${productName}`, { quantity });
-      setMessage(`Updated ${productName}`);
-    } catch (err) {
-      setMessage('Error updating item');
-    }
-  };
-
-  const deleteItem = async () => {
-    try {
-      await api.delete(`/user/delete_cart/cart/${productName}`);
-      setMessage(`Deleted ${productName}`);
-    } catch (err) {
-      setMessage('Error deleting item');
-    }
-  };
+  const total = cartItems.reduce(
+    (sum, item) => sum + (item.price || 0) * item.quantity,
+    0
+  );
 
   return (
     <div>
-      <h2>Cart Management</h2>
-      {message && <div className="alert alert-info">{message}</div>}
-      <div className="mb-3">
-        <label>Product Name</label>
-        <input className="form-control mb-2" value={productName} onChange={(e)=>setProductName(e.target.value)} />
-        <div className="mb-2">
-          <label>Quantity (for update)</label>
-          <input type="number" className="form-control" value={quantity} onChange={(e)=>setQuantity(e.target.value)} />
-        </div>
-        <button className="btn btn-success me-2" onClick={addItem}>Add to Cart</button>
-        <button className="btn btn-warning me-2" onClick={updateItem}>Update</button>
-        <button className="btn btn-danger" onClick={deleteItem}>Delete</button>
-      </div>
-      <hr />
-      <button className="btn btn-primary" onClick={() => navigate('/orders')}>Go to Place Order</button>
+      <h2 className="mb-4">Your Cart</h2>
+      <Alert message={message} type="success" />
+      <Alert message={error} type="danger" />
+      {loading && <LoadingState label="Loading cart..." />}
+      {!loading && cartItems.length === 0 && (
+        <EmptyState message="Your cart is empty. Add a product to get started." />
+      )}
+      {!loading && cartItems.length > 0 && (
+        <>
+          <div className="table-responsive">
+            <table className="table align-middle">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Price</th>
+                  <th>Quantity</th>
+                  <th>Total</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {cartItems.map(item => (
+                  <tr key={item.product_name}>
+                    <td>{item.product_name}</td>
+                    <td>₹{item.price || 0}</td>
+                    <td>
+                      <div className="quantity-control">
+                        <button
+                          className="btn btn-outline-secondary btn-sm"
+                          disabled={busyItem === item.product_name || item.quantity <= 1}
+                          onClick={() => updateQuantity(item.product_name, item.quantity - 1)}
+                        >
+                          -
+                        </button>
+                        <span>{item.quantity}</span>
+                        <button
+                          className="btn btn-outline-secondary btn-sm"
+                          disabled={busyItem === item.product_name || item.quantity >= item.stock}
+                          onClick={() => updateQuantity(item.product_name, item.quantity + 1)}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </td>
+                    <td>₹{(item.price || 0) * item.quantity}</td>
+                    <td>
+                      <button
+                        className="btn btn-outline-danger btn-sm"
+                        disabled={busyItem === item.product_name}
+                        onClick={() => deleteItem(item.product_name)}
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="cart-summary">
+            <strong>Total: ₹{total}</strong>
+            <button className="btn btn-primary" onClick={() => navigate('/orders')}>
+              Continue to Order
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 };

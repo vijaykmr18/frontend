@@ -1,79 +1,171 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import api from '../../api';
+import { getApiErrorMessage } from '../../api/errors';
+import { getResponseData, getResponseMessage } from '../../api/response';
+import { Alert, EmptyState, LoadingState } from '../../components/PageState';
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
-  const [address, setAddress] = useState('');
+  const [location, setLocation] = useState('');
+  const [returnReasons, setReturnReasons] = useState({});
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState('');
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
-      const { data } = await api.get('/user/view_oder/orders');
-      setOrders(data);
+      const response = await api.get('/user/view_oder/orders');
+      setOrders(getResponseData(response));
     } catch (err) {
-      console.error(err);
+      setError(getApiErrorMessage(err, 'Unable to load orders'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  const placeOrder = async (event) => {
+    event.preventDefault();
+    setBusy('place-order');
+    setError('');
+    try {
+      const response = await api.post('/user/place_order/order', {
+        location: location.trim(),
+      });
+      setMessage(getResponseMessage(response, 'Order placed'));
+      setLocation('');
+      await fetchOrders();
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Order failed'));
+    } finally {
+      setBusy('');
     }
   };
 
-  const placeOrder = async () => {
+  const deleteOrderItem = async (productName, quantity) => {
+    const key = `delete-${productName}`;
+    setBusy(key);
+    setError('');
     try {
-      await api.post('/user/place_order/order', { address });
-      setMessage('Order placed!');
-      fetchOrders();
+      const response = await api.delete(
+        `/user/delete_order/order/${encodeURIComponent(productName)}`,
+        { params: { quantity } }
+      );
+      setMessage(getResponseMessage(response, 'Order updated'));
+      await fetchOrders();
     } catch (err) {
-      setMessage('Order failed');
-    }
-  };
-
-  const deleteOrder = async (productName) => {
-    try {
-      await api.delete(`/user/delete_order/order/${productName}`);
-      setMessage('Order item deleted');
-      fetchOrders();
-    } catch (err) {
-      setMessage('Delete failed');
+      setError(getApiErrorMessage(err, 'Unable to update order'));
+    } finally {
+      setBusy('');
     }
   };
 
   const requestReturn = async (orderId) => {
+    const reason = returnReasons[orderId]?.trim();
+    if (!reason) {
+      setError('Enter a return reason first.');
+      return;
+    }
+
+    setBusy(`return-${orderId}`);
+    setError('');
     try {
-      await api.post(`/user/request_return/request/${orderId}`);
-      setMessage('Return requested');
+      const response = await api.post(
+        `/user/request_return/request/${orderId}`,
+        null,
+        { params: { reason } }
+      );
+      setMessage(getResponseMessage(response, 'Return requested'));
     } catch (err) {
-      setMessage('Return request failed');
+      setError(getApiErrorMessage(err, 'Return request failed'));
+    } finally {
+      setBusy('');
     }
   };
 
   return (
     <div>
-      <h2>Orders</h2>
-      {message && <div className="alert alert-info">{message}</div>}
-      <div className="mb-4">
+      <h2 className="mb-4">Orders</h2>
+      <Alert message={message} type="success" />
+      <Alert message={error} type="danger" />
+
+      <form className="form-panel mb-4" onSubmit={placeOrder}>
         <h4>Place Order</h4>
-        <div className="mb-2">
-          <label>Shipping Address</label>
-          <textarea className="form-control" value={address} onChange={e=>setAddress(e.target.value)} />
-        </div>
-        <button className="btn btn-success" onClick={placeOrder}>Place Order</button>
-      </div>
-      <hr />
-      <button className="btn btn-secondary mb-3" onClick={fetchOrders}>Refresh Orders</button>
-      <h4>My Orders</h4>
-      {orders.length === 0 ? <p>No orders found.</p> : (
-        <ul className="list-group">
-          {orders.map((order, idx) => (
-            <li key={idx} className="list-group-item">
-              <strong>Order ID: {order.id || order._id}</strong> — Status: {order.status}
-              <br />
-              Items: {order.items?.map(i => i.product_name).join(', ')}
-              <div className="mt-2">
-                <button className="btn btn-sm btn-danger me-2" onClick={() => deleteOrder(order.items?.[0]?.product_name)}>Delete by first product</button>
-                <button className="btn btn-sm btn-warning" onClick={() => requestReturn(order.id || order._id)}>Request Return</button>
+        <label className="form-label">Delivery Location</label>
+        <textarea
+          className="form-control mb-3"
+          rows="3"
+          value={location}
+          onChange={event => setLocation(event.target.value)}
+          required
+        />
+        <button className="btn btn-success" disabled={busy === 'place-order'}>
+          {busy === 'place-order' ? 'Placing order...' : 'Place Order from Cart'}
+        </button>
+      </form>
+
+      <h4 className="mb-3">Order History</h4>
+      {loading && <LoadingState label="Loading orders..." />}
+      {!loading && orders.length === 0 && <EmptyState message="No orders found." />}
+      <div className="stack-list">
+        {orders.map(order => (
+          <article className="order-card" key={order.order_id}>
+            <div className="order-card-header">
+              <div>
+                <strong>Order {order.order_id}</strong>
+                <div className="text-muted small">{order.location}</div>
               </div>
-            </li>
-          ))}
-        </ul>
-      )}
+              <span className="badge text-bg-secondary">{order.status}</span>
+            </div>
+            <div className="mt-3">
+              {order.items?.map(item => (
+                <div className="order-item" key={item.product_id}>
+                  <span>{item.product_name} x {item.quantity}</span>
+                  <span>₹{item.price * item.quantity}</span>
+                  {order.status !== 'Delivered' && (
+                    <button
+                      className="btn btn-outline-danger btn-sm"
+                      disabled={busy === `delete-${item.product_name}`}
+                      onClick={() => deleteOrderItem(item.product_name, 1)}
+                    >
+                      Remove one
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="order-footer">
+              <strong>Total: ₹{order.total_amount}</strong>
+              {order.status === 'Delivered' && (
+                <div className="return-form">
+                  <input
+                    className="form-control form-control-sm"
+                    placeholder="Reason for return"
+                    value={returnReasons[order.order_id] || ''}
+                    onChange={event =>
+                      setReturnReasons(current => ({
+                        ...current,
+                        [order.order_id]: event.target.value,
+                      }))
+                    }
+                  />
+                  <button
+                    className="btn btn-warning btn-sm"
+                    disabled={busy === `return-${order.order_id}`}
+                    onClick={() => requestReturn(order.order_id)}
+                  >
+                    Request Return
+                  </button>
+                </div>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
     </div>
   );
 };
