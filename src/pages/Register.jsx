@@ -7,6 +7,7 @@ const Register = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('user');
   const [error, setError] = useState('');
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ const Register = () => {
     e.preventDefault();
     setError('');
     try {
-      await register(name, email, password);
+      await register(name, email, password, role);
       navigate('/login', {
         state: { message: 'Registration successful. Please log in.' },
       });
@@ -49,6 +50,18 @@ const Register = () => {
           <div className="mb-3">
             <label>Password</label>
             <input type="password" className="form-control" value={password} onChange={e=>setPassword(e.target.value)} required />
+          </div>
+          <div className="mb-3">
+            <label>Role</label>
+            <select
+              className="form-select"
+              value={role}
+              onChange={e => setRole(e.target.value)}
+              required
+            >
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
           </div>
           <button className="btn btn-primary">Register</button>
         </form>
