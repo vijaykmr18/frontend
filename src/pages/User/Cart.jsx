@@ -14,8 +14,9 @@ const Cart = () => {
   const navigate = useNavigate();
 
   const fetchCart = useCallback(async () => {
+    setError('');
     try {
-      const response = await api.get('/user/add_cart/view');
+      const response = await api.get('/user/cart');
       setCartItems(getResponseData(response));
     } catch (err) {
       setError(getApiErrorMessage(err, 'Unable to load cart'));
@@ -40,7 +41,9 @@ const Cart = () => {
       );
       setCartItems(items =>
         items.map(item =>
-          item.product_name === productName ? { ...item, quantity } : item
+          item.product_name === productName
+            ? { ...item, quantity, subtotal: (item.price || 0) * quantity }
+            : item
         )
       );
       setMessage(getResponseMessage(response, 'Cart updated'));
@@ -105,14 +108,23 @@ const Cart = () => {
               </thead>
               <tbody>
                 {cartItems.map(item => (
-                  <tr key={item.product_name}>
-                    <td>{item.product_name}</td>
+                  <tr key={item.cart_item_id || item.product_id || item.product_name}>
+                    <td>
+                      <div>{item.product_name}</div>
+                      {!item.available && (
+                        <span className="text-danger small">No longer available</span>
+                      )}
+                    </td>
                     <td>₹{item.price || 0}</td>
                     <td>
                       <div className="quantity-control">
                         <button
                           className="btn btn-outline-secondary btn-sm"
-                          disabled={busyItem === item.product_name || item.quantity <= 1}
+                          disabled={
+                            busyItem === item.product_name ||
+                            item.quantity <= 1 ||
+                            !item.available
+                          }
                           onClick={() => updateQuantity(item.product_name, item.quantity - 1)}
                         >
                           -
@@ -120,7 +132,11 @@ const Cart = () => {
                         <span>{item.quantity}</span>
                         <button
                           className="btn btn-outline-secondary btn-sm"
-                          disabled={busyItem === item.product_name || item.quantity >= item.stock}
+                          disabled={
+                            busyItem === item.product_name ||
+                            item.quantity >= item.stock ||
+                            !item.available
+                          }
                           onClick={() => updateQuantity(item.product_name, item.quantity + 1)}
                         >
                           +
@@ -147,7 +163,11 @@ const Cart = () => {
               <span className="record-label">Order total</span>
               <strong className="cart-total">₹{total}</strong>
             </div>
-            <button className="btn btn-primary" onClick={() => navigate('/orders')}>
+            <button
+              className="btn btn-primary"
+              disabled={cartItems.some(item => !item.available)}
+              onClick={() => navigate('/orders')}
+            >
               Continue to Order
             </button>
           </div>

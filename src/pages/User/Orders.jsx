@@ -15,8 +15,9 @@ const Orders = () => {
   const [busy, setBusy] = useState('');
 
   const fetchOrders = useCallback(async () => {
+    setError('');
     try {
-      const response = await api.get('/user/view_oder/orders');
+      const response = await api.get('/user/view_order/orders');
       setOrders(getResponseData(response));
     } catch (err) {
       setError(getApiErrorMessage(err, 'Unable to load orders'));
@@ -77,13 +78,13 @@ const Orders = () => {
     try {
       const response = await api.post(
         `/user/request_return/request/${orderId}`,
-        null,
-        { params: { reason } }
+        { reason }
       );
       const receipt = getResponseData(response)[0];
       setReturnReceipt(receipt || null);
       setMessage(getResponseMessage(response, 'Return requested'));
       setReturnReasons(current => ({ ...current, [orderId]: '' }));
+      await fetchOrders();
     } catch (err) {
       setError(getApiErrorMessage(err, 'Return request failed'));
     } finally {
@@ -183,6 +184,7 @@ const Orders = () => {
                     }
                   />
                   <button
+                    type="button"
                     className="btn btn-warning btn-sm"
                     disabled={busy === `return-${order.order_id}`}
                     onClick={() => requestReturn(order.order_id)}

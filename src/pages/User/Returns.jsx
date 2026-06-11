@@ -15,6 +15,7 @@ const Returns = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const fetchReturns = useCallback(async () => {
+    setError('');
     try {
       const response = await api.get('/user/view_return/view');
       setReturns(getResponseData(response));
@@ -38,8 +39,7 @@ const Returns = () => {
     try {
       const response = await api.post(
         `/user/request_return/request/${encodeURIComponent(orderId.trim())}`,
-        null,
-        { params: { reason: reason.trim() } }
+        { reason: reason.trim() }
       );
       const createdReturn = getResponseData(response)[0];
       setReceipt(createdReturn || null);
